@@ -17,3 +17,4 @@ config/config.ini
 .idea/
 *.swp
 *.swo
+node_modules/
