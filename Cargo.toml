@@ -20,6 +20,7 @@ path = "src-tauri/src/main.rs"
 # git submodule add <private-repo-url> crates/marketingPrivate
 marketingPrivate = { path = "../marketingPrivate" }
 zhihu = { path = "../zhihu" }
+xiaohongshu = { path = "../xiaohongshu" }
 marketingbase = { path = "../marketingbase" }
 base = { git = "https://github.com/www778878net/rustbase.git" }
 
