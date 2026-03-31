@@ -1,0 +1,53 @@
+[package]
+name = "aiSales"
+version = "0.1.0"
+edition = "2021"
+description = "AI Sales Assistant - Public facing API"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourorg/aiSales"
+build = "src-tauri/build.rs"
+
+[lib]
+name = "aiSales"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aiSales"
+path = "src-tauri/src/main.rs"
+
+[dependencies]
+# 私有核心库 - 需要单独获取源码
+# git submodule add <private-repo-url> crates/marketingPrivate
+marketingPrivate = { path = "../marketingPrivate" }
+zhihu = { path = "../zhihu" }
+marketingbase = { path = "../marketingbase" }
+base = { git = "https://github.com/www778878net/rustbase.git" }
+
+# 公开依赖（用户也能看到）
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "1"
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["full"] }
+configparser = "0.11"
+log = "0.4"
+env_logger = "0.10"
+
+# Tauri依赖
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-shell = "2"
+tauri-plugin-log = "2"
+
+# 其他必要依赖
+futures = "0.3"
+urlencoding = "2"
+chromiumoxide = { version = "0.7", features = ["tokio-runtime"] }
+ureq = { version = "2", features = ["json"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dev-dependencies]
+tempfile = "3"
+tempdir = "0.3"

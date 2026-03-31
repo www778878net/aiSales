@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>小柒AI营销员</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+      display: flex;
+    }
+    
+    .container {
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+    }
+    
+    .sidebar {
+      width: 220px;
+      background: linear-gradient(180deg, #1a1f36 0%, #252b48 100%);
+      color: white;
+      min-height: 100vh;
+      padding: 20px 0;
+    }
+    .logo {
+      padding: 0 20px 30px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 20px;
+    }
+    .logo h1 {
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo span { font-size: 24px; }
+    
+    .menu {
+      list-style: none;
+    }
+    .menu-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: rgba(255,255,255,0.7);
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+    .menu-item:hover {
+      background: rgba(255,255,255,0.05);
+      color: white;
+    }
+    .menu-item.active {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border-left-color: #667eea;
+    }
+    .menu-item .icon { font-size: 18px; width: 24px; text-align: center; }
+    .menu-item .text { font-size: 14px; }
+    
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .header {
+      background: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .header-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .status-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .status-badge.ready { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.running { background: #fff3e0; color: #ff9800; }
+    .status-badge.error { background: #ff4757; color: white; }
+    
+    .page {
+      display: none;
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .page.active { display: block; }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    .card-header {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .card-header.collapsible::after {
+      content: ' ▼';
+      margin-left: 8px;
+      transition: transform 0.2s;
+    }
+    .card-header.collapsed::after {
+      content: ' ▶';
+    }
+    .card-body {
+      padding: 15px 0;
+    }
+    .card-body.collapsed {
+      display: none;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      color: white;
+    }
+    .stat-card .value { font-size: 28px; font-weight: bold; }
+    .stat-card .label { font-size: 12px; color: rgba(255,255,255,0.8); }
+    .stat-card.warning { background: linear-gradient(135deg, #ffa724 0%, #ff9800 100%); }
+    .stat-card.error { background: linear-gradient(135deg, #ff4757 0%, #ff6b6f 100%); }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: #667eea;
+      outline: none;
+    }
+    .form-hint {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .form-row {
+      display: flex;
+      gap: 15px;
+    }
+    .form-row .form-group {
+      flex: 1;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #5a7fe 0%, #667eea 100%);
+    }
+    .btn-default {
+      background: #f5f7fa;
+      color: #333;
+    }
+    .btn-default:hover {
+      background: #e8f5e9;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ff4757 0%, #ff6b6f5 100%);
+      color: white;
+    }
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #ff6b6f5 0%, #ff4757 100%);
+    }
+    
+    .logs {
+      background: #f8f5f9;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .log-item {
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .log-item .time {
+      color: #666;
+      font-size: 11px;
+      width: 60px;
+      flex-shrink: 0;
+    }
+    .log-item .message {
+      flex: 1;
+    }
+    .log-item.info { color: #2ed573; }
+    .log-item.warn { color: #ffa502; }
+    .log-item.error { color: #ff4757; }
+    .log-item.success { color: #2ed573; }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+      background: #ddd;
+      border-radius: 12px;
+      margin-right: 10px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 2px;
+      left: 2px;
+      right: 2px;
+      bottom: 2px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.2s;
+      width: 18px;
+      height: 18px;
+    }
+    input:checked + .switch-slider {
+      transform: translateX(22px);
+    }
+    
+    .platform-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+    .platform-icon.xhs { background: #ff2442; color: white; }
+    .platform-icon.zh { background: #0084ff; color: white; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <div class="logo">
+        <h1><span>🚀</span> 小柒AI营销员</h1>
+      </div>
+      <ul class="menu">
+        <li class="menu-item active" data-page="dashboard">
+          <span class="icon">📊</span>
+          <span class="text">运行表</span>
+        </li>
+        <li class="menu-item" data-page="settings">
+          <span class="icon">⚙️</span>
+          <span class="text">通用设置</span>
+        </li>
+      </ul>
+    </div>
+    
+    <div class="main">
+      <div class="header">
+        <div class="header-title" id="pageTitle">运行表</div>
+        <div class="header-actions">
+          <span class="status-badge ready" id="statusBadge">就绪</span>
+        </div>
+      </div>
+      
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="value" id="statTotal">0</div>
+            <div class="label">总任务</div>
+          </div>
+          <div class="stat-card warning">
+            <div class="value" id="statSuccess">0</div>
+            <div class="label">成功</div>
+          </div>
+          <div class="stat-card error">
+            <div class="value" id="statFailed">0</div>
+            <div class="label">失败</div>
+          </div>
+          <div class="stat-card">
+            <div class="value" id="statSkipped">0</div>
+            <div class="label">跳过</div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">快捷操作</div>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="startAllTasks()">▶️ 开始任务</button>
+            <button class="btn btn-danger" onclick="stopAllTasks()">⏹️ 停止任务</button>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">任务日志</div>
+          <div class="logs" id="logs"></div>
+        </div>
+      </div>
+      
+      <div class="page" id="page-settings">
+        <div class="card">
+          <div class="card-header" onclick="toggleCard(this)">大模型配置 <span class="toggle-icon">▶</span></div>
+          <div class="card-body" style="display: none;">
+            <div class="form-group">
+              <label>当前提供商</label>
+              <select id="llmProvider" onchange="switchProvider()">
+                <option value="modelscope">ModelScope</option>
+                <option value="openai">OpenAI</option>
+                <option value="deepseek">DeepSeek</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>API URL</label>
+              <input type="text" id="llmApiUrl" />
+              <div class="form-hint">大模型API地址</div>
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="llmApiKey" placeholder="请输入API Key" />
+              <div class="form-hint">API密钥，用于调用大模型生成评论内容</div>
+            </div>
+            <div class="form-group">
+              <label>模型名称</label>
+              <input type="text" id="llmModel" />
+              <div class="form-hint">如：ZhipuAI/GLM-5, gpt-3.5-turbo, deepseek-chat</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header" onclick="toggleCard(this)">任务设置 <span class="toggle-icon">▶</span></div>
+          <div class="card-body" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label>页面加载等待时间(秒)</label>
+                <input type="number" id="pageWaitTime" value="10" />
+              </div>
+              <div class="form-group">
+                <label>评论间隔时间(秒)</label>
+                <input type="number" id="commentInterval" value="10" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>每个关键词最大笔记数</label>
+              <input type="number" id="maxNotes" value="5" />
+            </div>
+            <div class="form-group">
+              <label>搜索关键词（每行一个）</label>
+              <textarea id="searchKeywords" rows="4" placeholder="每行一个关键词"></textarea>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header" onclick="toggleCard(this)">平台设置 <span class="toggle-icon">▶</span></div>
+          <div class="card-body" style="display: none;">
+            <div class="form-group">
+              <label>启用平台</label>
+              <div style="display: flex; flex-direction: row; gap: 20px; margin-top: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                  <input type="checkbox" id="enableXhs" checked>
+                  <span style="color: #ff2442; font-weight: bold;">小红书</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                  <input type="checkbox" id="enableZh">
+                  <span style="color: #0084ff; font-weight: bold;">知乎</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header" onclick="toggleCard(this)">账号管理 <span class="toggle-icon">▶</span></div>
+          <div class="card-body" style="display: none;">
+            <div class="form-group">
+              <label>当前账号</label>
+              <div style="display: flex; gap: 10px;">
+                <select id="currentAccount" style="flex: 1;">
+                  <option value="">请添加账号</option>
+                </select>
+                <button class="btn btn-default" onclick="removeAccount()">删除</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>添加新账号</label>
+              <div style="display: flex; gap: 10px;">
+                <input type="text" id="newAccountId" placeholder="手机号" style="flex: 1;" />
+                <button class="btn btn-default" onclick="addAccount()">添加</button>
+              </div>
+            </div>
+            <div class="form-hint" style="margin-top: 10px;">目录格式: 平台_手机号 (如 xiaohongshu_18169240160)</div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 20px; display: flex; gap: 12px; align-items: center;">
+          <button class="btn btn-primary" onclick="saveSettings()">💾 保存设置</button>
+          <span id="settingsMsg" style="margin-left: 10px;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module">
+    import { invoke } from '@tauri-apps/api/core';
+    
+    const menuItems = document.querySelectorAll('.menu-item');
+    const pages = document.querySelectorAll('.page');
+    const pageTitle = document.getElementById('pageTitle');
+    const statusBadge = document.getElementById('statusBadge');
+    const logsEl = document.getElementById('logs');
+    
+    menuItems.forEach(function(item) {
+      item.addEventListener('click', function() {
+        menuItems.forEach(function(i) { i.classList.remove('active'); });
+        item.classList.add('active');
+        
+        pages.forEach(function(p) { p.classList.remove('active'); });
+        document.getElementById('page-' + item.dataset.page).classList.add('active');
+        
+        pageTitle.textContent = item.querySelector('.text').textContent;
+      });
+    });
+    
+    function setStatus(text, type) {
+      statusBadge.textContent = text;
+      statusBadge.className = 'status-badge ' + type;
+    }
+    
+    function addLog(message, type) {
+      const logItem = document.createElement('div');
+      logItem.className = 'log-item ' + type;
+      const now = new Date();
+      logItem.innerHTML = '<span class="time">' + now.toLocaleTimeString() + '</span><span class="message">' + message + '</span>';
+      logsEl.appendChild(logItem);
+      logsEl.scrollTop = logsEl.scrollHeight;
+    }
+    
+    window.toggleCard = function(header) {
+      const body = header.nextElementSibling;
+      const icon = header.querySelector('.toggle-icon');
+      if (body) {
+        if (body.style.display === 'none') {
+          body.style.display = 'block';
+          if (icon) icon.textContent = '▼';
+        } else {
+          body.style.display = 'none';
+          if (icon) icon.textContent = '▶';
+        }
+      }
+    };
+    
+    window.startAllTasks = async function() {
+      setStatus('运行中', 'running');
+      addLog('开始执行任务...', 'info');
+      
+      const keywords = document.getElementById('searchKeywords').value.split('\n').filter(function(k) { return k.trim(); });
+      const maxNotes = parseInt(document.getElementById('maxNotes').value);
+      
+      if (keywords.length === 0) {
+        addLog('请先配置关键词', 'error');
+        setStatus('错误', 'error');
+        return;
+      }
+      
+      if (accounts.length === 0) {
+        addLog('请先添加账号', 'error');
+        setStatus('错误', 'error');
+        return;
+      }
+      
+      const enableXhs = document.getElementById('enableXhs').checked;
+      const enableZh = document.getElementById('enableZh').checked;
+      
+      // 收集所有要处理的 平台_账号
+      const tasks = [];
+      for (const accountId of accounts) {
+        if (enableXhs) {
+          tasks.push({ platform: 'xiaohongshu', account: accountId, accountDir: 'xiaohongshu_' + accountId });
+        }
+        if (enableZh) {
+          tasks.push({ platform: 'zhihu', account: accountId, accountDir: 'zhihu_' + accountId });
+        }
+      }
+      
+      addLog('共 ' + tasks.length + ' 个任务待执行', 'info');
+      
+      // 并发执行所有任务
+      const results = await Promise.all(tasks.map(async function(task) {
+        addLog('启动 ' + task.accountDir + '...', 'info');
+        
+        try {
+          const result = await invoke('run_marketing_task', {
+            keywords: keywords.map(function(k) { return k.trim(); }),
+            comment: '',
+            maxNotes: maxNotes,
+            account: task.accountDir
+          });
+          
+          addLog(task.accountDir + ' 完成! 成功: ' + result.stats.success, 'success');
+          return { accountDir: task.accountDir, success: true, stats: result.stats };
+        } catch (e) {
+          addLog(task.accountDir + ' 失败: ' + e, 'error');
+          return { accountDir: task.accountDir, success: false, error: e };
+        }
+      }));
+      
+      // 统计结果
+      let totalSuccess = 0;
+      let totalFailed = 0;
+      results.forEach(function(r) {
+        if (r.success) {
+          totalSuccess += r.stats.success || 0;
+          totalFailed += r.stats.failed || 0;
+        }
+      });
+      
+      document.getElementById('statSuccess').textContent = totalSuccess;
+      document.getElementById('statFailed').textContent = totalFailed;
+      
+      addLog('所有任务完成! 成功: ' + totalSuccess + ', 失败: ' + totalFailed, 'success');
+      setStatus('完成', 'ready');
+    };
+    
+    window.stopAllTasks = function() {
+      setStatus('已停止', 'error');
+      addLog('任务已停止', 'warn');
+    };
+    
+    window.refreshStats = function() {
+      addLog('刷新统计数据...', 'info');
+    };
+    
+    window.saveSettings = async function() {
+      const msgEl = document.getElementById('settingsMsg');
+      msgEl.textContent = '';
+      msgEl.style.color = '';
+      
+      const currentProvider = document.getElementById('llmProvider').value;
+      
+      const providers = {};
+      providers[currentProvider] = {
+        api_url: document.getElementById('llmApiUrl').value,
+        api_key: document.getElementById('llmApiKey').value,
+        model: document.getElementById('llmModel').value
+      };
+      
+      const keywords = document.getElementById('searchKeywords').value.split('\n').filter(function(k) { return k.trim(); });
+      
+      const platforms = {
+        xiaohongshu: document.getElementById('enableXhs').checked,
+        zhihu: document.getElementById('enableZh').checked
+      };
+      
+      const config = {
+        page_wait_time: parseInt(document.getElementById('pageWaitTime').value) || 10,
+        comment_interval: parseInt(document.getElementById('commentInterval').value) || 10,
+        max_notes: parseInt(document.getElementById('maxNotes').value) || 5,
+        keywords: keywords,
+        current_provider: currentProvider,
+        providers: providers,
+        platforms: platforms,
+        accounts: accounts
+      };
+      
+      try {
+        await invoke('save_config', { config: config });
+        msgEl.textContent = '✓ 已保存';
+        msgEl.style.color = '#2ed573';
+        addLog('设置已保存', 'success');
+      } catch (e) {
+        msgEl.textContent = '✗ ' + e;
+        msgEl.style.color = '#ff4757';
+        addLog('保存失败: ' + e, 'error');
+      }
+    };
+    
+    window.switchProvider = function() {
+      const provider = document.getElementById('llmProvider').value;
+      const defaults = {
+        modelscope: { url: 'https://api-inference.modelscope.cn/v1', model: 'ZhipuAI/GLM-5' },
+        openai: { url: 'https://api.openai.com/v1', model: 'gpt-3.5-turbo' },
+        deepseek: { url: 'https://api.deepseek.com/v1', model: 'deepseek-chat' }
+      };
+      
+      if (defaults[provider]) {
+        document.getElementById('llmApiUrl').value = defaults[provider].url;
+        document.getElementById('llmModel').value = defaults[provider].model;
+        document.getElementById('llmApiKey').value = '';
+      }
+    };
+    
+    window.togglePlatform = function(platform) {
+      const settingsId = platform + 'Settings';
+      const settings = document.getElementById(settingsId);
+      if (settings) {
+        settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+      }
+    };
+    
+    async function loadConfig() {
+      try {
+        addLog('加载配置...', 'info');
+        const config = await invoke('get_config');
+        addLog('配置加载成功', 'success');
+        
+        document.getElementById('pageWaitTime').value = config.page_wait_time || 10;
+        document.getElementById('commentInterval').value = config.comment_interval || 10;
+        document.getElementById('maxNotes').value = config.max_notes || 5;
+        
+        // Load keywords
+        document.getElementById('searchKeywords').value = (config.keywords || []).join('\n');
+        
+        // Load platform enabled status
+        if (config.platforms) {
+          document.getElementById('enableXhs').checked = config.platforms.xiaohongshu !== false;
+          document.getElementById('enableZh').checked = config.platforms.zhihu === true;
+        }
+        
+        // Load accounts
+        if (config.accounts && config.accounts.length > 0) {
+          accounts = config.accounts;
+          updateAccountSelect();
+        }
+        
+        const currentProvider = config.current_provider || 'modelscope';
+        document.getElementById('llmProvider').value = currentProvider;
+        
+        if (config.providers && config.providers[currentProvider]) {
+          const provider = config.providers[currentProvider];
+          document.getElementById('llmApiUrl').value = provider.api_url || '';
+          document.getElementById('llmApiKey').value = provider.api_key || '';
+          document.getElementById('llmModel').value = provider.model || '';
+        } else {
+          window.switchProvider();
+        }
+        
+        return config;
+      } catch (e) {
+        addLog('加载配置失败: ' + e, 'error');
+        window.switchProvider();
+        return null;
+      }
+    }
+    
+    async function checkFirstTimeSetup() {
+      try {
+        const config = await invoke('get_config');
+        
+        if (!config.providers || !config.providers[config.current_provider] || 
+            !config.providers[config.current_provider].api_key) {
+          showSetupWizard();
+          return true;
+        }
+        return false;
+      } catch (e) {
+        showSetupWizard();
+        return true;
+      }
+    }
+    
+    function showSetupWizard() {
+      menuItems.forEach(function(i) { i.classList.remove('active'); });
+      document.querySelector('[data-page="settings"]').classList.add('active');
+      
+      pages.forEach(function(p) { p.classList.remove('active'); });
+      document.getElementById('page-settings').classList.add('active');
+      
+      pageTitle.textContent = '通用设置';
+      
+      addLog('欢迎使用小柒AI营销员！请先完成以下设置：', 'info');
+      addLog('1. 选择提供商并填写 API Key', 'info');
+      addLog('2. 在任务设置中添加关键词', 'info');
+      addLog('3. 保存设置后即可开始使用', 'info');
+      
+      setStatus('请先设置', 'error');
+    }
+    
+    // Account management
+    let accounts = [];
+    
+    window.addAccount = async function() {
+      const newId = document.getElementById('newAccountId').value.trim();
+      if (!newId) {
+        addLog('请输入账号', 'warn');
+        return;
+      }
+      if (accounts.includes(newId)) {
+        addLog('账号已存在', 'warn');
+        return;
+      }
+      accounts.push(newId);
+      updateAccountSelect();
+      document.getElementById('newAccountId').value = '';
+      addLog('已添加账号: ' + newId, 'success');
+      
+      // Auto save
+      await saveAccounts();
+    };
+    
+    window.removeAccount = async function() {
+      const select = document.getElementById('currentAccount');
+      const current = select.value;
+      if (!current) {
+        addLog('请先选择账号', 'warn');
+        return;
+      }
+      if (accounts.length <= 1) {
+        addLog('至少保留一个账号', 'warn');
+        return;
+      }
+      accounts = accounts.filter(function(a) { return a !== current; });
+      updateAccountSelect();
+      addLog('已删除账号: ' + current, 'info');
+      
+      // Auto save
+      await saveAccounts();
+    };
+    
+    async function saveAccounts() {
+      try {
+        const config = await invoke('get_config');
+        config.accounts = accounts;
+        await invoke('save_config', { config: config });
+        addLog('账号已保存', 'success');
+      } catch (e) {
+        addLog('保存账号失败: ' + e, 'error');
+      }
+    }
+    
+    function updateAccountSelect() {
+      const select = document.getElementById('currentAccount');
+      select.innerHTML = accounts.map(function(a) {
+        return '<option value="' + a + '">' + a + '</option>';
+      }).join('');
+    }
+    
+    function initApp() {
+      addLog('初始化应用...', 'info');
+      loadConfig();
+      checkFirstTimeSetup();
+    }
+    
+    // Start app
+    initApp();
+  </script>
+</body>
+</html>

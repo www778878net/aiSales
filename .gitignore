@@ -1,0 +1,19 @@
+# aiSales - 开源部分
+
+# 私有依赖预编译包（不提交）
+libs/marketingPrivate/
+!libs/marketingPrivate/Cargo.toml
+
+# 运行时文件
+target/
+Cargo.lock
+
+# 配置文件 - 包含敏感信息，不提交
+docs/config/config.ini
+config/config.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
