@@ -194,4 +194,6 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-fn main() {}
+fn main() {
+    run()
+}

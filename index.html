@@ -628,7 +628,7 @@
       };
       
       try {
-        await invoke('save_config', { config: config });
+        await invoke('save_config_command', { config: config });
         msgEl.textContent = '✓ 已保存';
         msgEl.style.color = '#2ed573';
         addLog('设置已保存', 'success');
@@ -665,7 +665,7 @@
     async function loadConfig() {
       try {
         addLog('加载配置...', 'info');
-        const config = await invoke('get_config');
+        const config = await invoke('get_config_command');
         addLog('配置加载成功', 'success');
         
         document.getElementById('pageWaitTime').value = config.page_wait_time || 10;
@@ -709,7 +709,7 @@
     
     async function checkFirstTimeSetup() {
       try {
-        const config = await invoke('get_config');
+        const config = await invoke('get_config_command');
         
         if (!config.providers || !config.providers[config.current_provider] || 
             !config.providers[config.current_provider].api_key) {
@@ -783,9 +783,9 @@
     
     async function saveAccounts() {
       try {
-        const config = await invoke('get_config');
+        const config = await invoke('get_config_command');
         config.accounts = accounts;
-        await invoke('save_config', { config: config });
+        await invoke('save_config_command', { config: config });
         addLog('账号已保存', 'success');
       } catch (e) {
         addLog('保存账号失败: ' + e, 'error');
