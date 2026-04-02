@@ -548,11 +548,12 @@
       }
       
       addLog('共 ' + tasks.length + ' 个任务待执行', 'info');
-      
-      // 并发执行所有任务
-      const results = await Promise.all(tasks.map(async function(task) {
+
+      // 串行执行任务（避免同时启动多个Chrome）
+      const results = [];
+      for (const task of tasks) {
         addLog('启动 ' + task.accountDir + '...', 'info');
-        
+
         try {
           const result = await invoke('run_marketing_task', {
             keywords: keywords.map(function(k) { return k.trim(); }),
@@ -560,14 +561,17 @@
             maxNotes: maxNotes,
             account: task.accountDir
           });
-          
+
           addLog(task.accountDir + ' 完成! 成功: ' + result.stats.success, 'success');
-          return { accountDir: task.accountDir, success: true, stats: result.stats };
+          results.push({ accountDir: task.accountDir, success: true, stats: result.stats });
         } catch (e) {
           addLog(task.accountDir + ' 失败: ' + e, 'error');
-          return { accountDir: task.accountDir, success: false, error: e };
+          results.push({ accountDir: task.accountDir, success: false, error: e });
         }
-      }));
+
+        // 任务间隔
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
       
       // 统计结果
       let totalSuccess = 0;

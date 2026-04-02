@@ -1,21 +1,10 @@
-//! 营销自动化微服务
+//! AI Sales Assistant - 开源库
 //!
-//! 提供Chrome实例管理和任务执行API
+//! 职责：
+//! 1. 读写配置文件
+//! 2. 启动和停止 marketing.exe
+//!
+//! 业务逻辑由 marketingPrivate crate 提供
 
-pub mod chrome;
-
-use serde::{Deserialize, Serialize};
-
-pub use chrome::ChromeService;
-
-/// 任务结果
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TaskResult {
-    pub success: bool,
-    pub message: String,
-    pub processed: u32,
-    pub success_count: u32,
-    pub failed_count: u32,
-}
-
-
+// 重导出 marketingPrivate 的类型，方便使用
+pub use marketing::{MarketingController, TaskResult, BrowserService};

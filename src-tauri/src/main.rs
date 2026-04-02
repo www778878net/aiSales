@@ -1,29 +1,23 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::State;
 use log::info;
-use serde_json::json;
 
-// 只导入类型，不导入函数（避免冲突）
 use aiSales::{AppConfig, PlatformConfig, AppState as ConfigState};
+use marketing::MarketingController;
 
-// 导入 marketingPrivate 的库
-use marketingPrivate::BrowserService;
-use marketingPrivate::taskmanage::{TaskRunner, StepResult};
-use zhihu::steps::{SearchStep, AnswerStep};
-use xiaohongshu::steps::{SearchStep as XhsSearchStep, CommentStep as XhsCommentStep};
-use chromiumoxide::Browser;
-use futures::StreamExt;
-
-/// 应用状态
+/// 运行状态
 pub struct AppState {
     pub config_state: ConfigState,
+    pub running: AtomicBool,
 }
 
 impl Default for AppState {
     fn default() -> Self {
         Self {
             config_state: ConfigState::default(),
+            running: AtomicBool::new(false),
         }
     }
 }
@@ -52,125 +46,54 @@ async fn save_platform_config_command(platform: String, config: PlatformConfig, 
     aiSales::save_platform_config(&platform, &config, &state.config_state)
 }
 
-/// 启动Chrome实例
+/// 启动 - 直接调用 marketing::auto_run
 #[tauri::command]
-async fn start_chrome(account: String) -> Result<serde_json::Value, String> {
-    info!("API调用: start_chrome, account={}", account);
-    let mut service = BrowserService::default();
-    let port = service.start_chrome_with_account(&account, None)
-        .map_err(|e| format!("启动Chrome失败: {}", e))?;
-    Ok(json!({ "res": 0, "errmsg": "", "datawf": { "account": account, "port": port, "started": true, "status": "running" } }))
-}
+async fn start_marketing(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    info!("启动 marketing auto");
 
-/// 停止Chrome实例
-#[tauri::command]
-async fn stop_chrome(port: u16) -> Result<serde_json::Value, String> {
-    info!("API调用: stop_chrome, port={}", port);
-    let mut service = BrowserService::default();
-    service.stop_instance(port);
-    Ok(json!({ "res": 0, "errmsg": "", "datawf": { "port": port, "stopped": true } }))
-}
-
-/// 获取Chrome实例状态
-#[tauri::command]
-async fn get_chrome_status(port: u16) -> Result<serde_json::Value, String> {
-    info!("API调用: get_chrome_status, port={}", port);
-    let service = BrowserService::default();
-    let instance = service.get_instance(port)
-        .ok_or_else(|| format!("实例 {} 不存在", port))?;
-    Ok(json!({ "res": 0, "errmsg": "", "datawf": { "port": instance.port, "account": instance.account, "status": format!("{:?}", instance.status) } }))
-}
-
-/// 列出所有Chrome实例
-#[tauri::command]
-async fn list_chrome_instances() -> Result<serde_json::Value, String> {
-    info!("API调用: list_chrome_instances");
-    let service = BrowserService::default();
-    let instances = service.list_instances();
-    let data: Vec<serde_json::Value> = instances.iter().map(|i| {
-        json!({ "port": i.port, "account": i.account, "status": format!("{:?}", i.status) })
-    }).collect();
-    Ok(json!({ "res": 0, "errmsg": "", "data": data }))
-}
-
-/// 任务结果
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
-pub struct TaskResult {
-    pub success: bool,
-    pub message: String,
-    pub processed: u32,
-    pub success_count: u32,
-    pub failed_count: u32,
-}
-
-/// 执行知乎任务
-async fn run_zhihu_task(browser: &Browser, keywords: Vec<String>, content: &str, max_count: u32) -> TaskResult {
-    let mut runner = TaskRunner::new("zhihu_task".to_string(), "zhihu".to_string());
-    runner.register(SearchStep::new(keywords.clone()));
-    runner.register(AnswerStep::new(content.to_string(), max_count));
-    let result = runner.run(browser, "zhihu_search").await;
-    match result {
-        StepResult::Over => TaskResult { success: true, message: "任务完成".to_string(), processed: 1, success_count: 1, failed_count: 0 },
-        StepResult::Error(e) => TaskResult { success: false, message: e, processed: 0, success_count: 0, failed_count: 1 },
-        StepResult::DeviceLost(e) => TaskResult { success: false, message: format!("设备丢失: {}", e), processed: 0, success_count: 0, failed_count: 1 },
-        _ => TaskResult { success: true, message: "任务完成".to_string(), processed: 1, success_count: 1, failed_count: 0 },
+    // 检查是否已运行
+    if state.running.load(Ordering::SeqCst) {
+        return Err("任务已在运行中".to_string());
     }
-}
 
-/// 执行小红书任务
-async fn run_xiaohongshu_task(browser: &Browser, keywords: Vec<String>, content: &str, max_count: u32) -> TaskResult {
-    let mut runner = TaskRunner::new("xiaohongshu_task".to_string(), "xiaohongshu".to_string());
-    runner.register(XhsSearchStep::new(keywords.clone()));
-    runner.register(XhsCommentStep::new(content.to_string(), max_count));
-    let result = runner.run(browser, "xiaohongshu_search").await;
-    match result {
-        StepResult::Over => TaskResult { success: true, message: "小红书任务完成".to_string(), processed: 1, success_count: 1, failed_count: 0 },
-        StepResult::Error(e) => TaskResult { success: false, message: e, processed: 0, success_count: 0, failed_count: 1 },
-        StepResult::DeviceLost(e) => TaskResult { success: false, message: format!("设备丢失: {}", e), processed: 0, success_count: 0, failed_count: 1 },
-        _ => TaskResult { success: true, message: "小红书任务完成".to_string(), processed: 1, success_count: 1, failed_count: 0 },
-    }
-}
+    // 先停止已有的 Chrome
+    let controller = MarketingController::new();
+    controller.stop_all();
 
-/// 执行任务
-#[tauri::command]
-async fn run_task(
-    account: String,
-    task_type: String,
-    keywords: Vec<String>,
-    content: String,
-    max_count: u32,
-) -> Result<serde_json::Value, String> {
-    info!("API调用: run_task, account={}, task_type={}", account, task_type);
+    state.running.store(true, Ordering::SeqCst);
 
-    let ws_url = {
-        let mut service = BrowserService::default();
-        let start_url = if account.starts_with("zhihu_") {
-            "https://www.zhihu.com".to_string()
-        } else {
-            "https://www.xiaohongshu.com".to_string()
-        };
-        let port = service.start_chrome_with_account(&account, Some(start_url))
-            .map_err(|e| format!("启动Chrome失败: {}", e))?;
-        let instance = service.get_instance(port)
-            .ok_or_else(|| "无法获取Chrome实例".to_string())?;
-        instance.ws_url.clone().ok_or_else(|| "无法获取WebSocket URL".to_string())?
-    };
-
-    let (browser, mut handler) = chromiumoxide::Browser::connect(&ws_url)
-        .await
-        .map_err(|e| format!("连接Chrome失败: {}", e))?;
-
+    // 直接调用 marketing::auto_run
     tokio::spawn(async move {
-        while let Some(_h) = handler.next().await {}
+        let result = marketing::auto_run().await;
+        match result {
+            Ok(_) => info!("marketing auto 完成"),
+            Err(e) => info!("marketing auto 错误: {}", e),
+        }
     });
 
-    let result = if account.starts_with("zhihu_") {
-        run_zhihu_task(&browser, keywords, &content, max_count).await
-    } else {
-        run_xiaohongshu_task(&browser, keywords, &content, max_count).await
-    };
+    Ok(serde_json::json!({
+        "res": 0,
+        "errmsg": "",
+        "datawf": { "started": true }
+    }))
+}
 
-    Ok(json!(result))
+/// 停止
+#[tauri::command]
+async fn stop_marketing(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    info!("停止 marketing");
+
+    state.running.store(false, Ordering::SeqCst);
+
+    // 停止 Chrome
+    let controller = MarketingController::new();
+    controller.stop_all();
+
+    Ok(serde_json::json!({
+        "res": 0,
+        "errmsg": "",
+        "datawf": { "stopped": true }
+    }))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -184,11 +107,8 @@ pub fn run() {
             save_config_command,
             get_platform_config_command,
             save_platform_config_command,
-            start_chrome,
-            stop_chrome,
-            get_chrome_status,
-            list_chrome_instances,
-            run_task,
+            start_marketing,
+            stop_marketing,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

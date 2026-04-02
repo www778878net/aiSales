@@ -18,7 +18,7 @@ path = "src-tauri/src/main.rs"
 [dependencies]
 # 私有核心库 - 需要单独获取源码
 # git submodule add <private-repo-url> crates/marketingPrivate
-marketingPrivate = { path = "../marketingPrivate" }
+marketing = { path = "../marketingPrivate" }
 zhihu = { path = "../zhihu" }
 xiaohongshu = { path = "../xiaohongshu" }
 marketingbase = { path = "../marketingbase" }

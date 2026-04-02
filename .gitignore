@@ -18,3 +18,7 @@ config/config.ini
 *.swp
 *.swo
 node_modules/
+*.log
+*.db
+*-shm
+*-wal
