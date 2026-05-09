@@ -5,19 +5,19 @@ use tauri::State;
 use log::info;
 
 use aiSales::{AppConfig, PlatformConfig, AppState as ConfigState};
-use marketing::MarketingController;
+
+/// 运行状态（使用静态变量确保全局唯一）
+static RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// 运行状态
 pub struct AppState {
     pub config_state: ConfigState,
-    pub running: AtomicBool,
 }
 
 impl Default for AppState {
     fn default() -> Self {
         Self {
             config_state: ConfigState::default(),
-            running: AtomicBool::new(false),
         }
     }
 }
@@ -48,52 +48,100 @@ async fn save_platform_config_command(platform: String, config: PlatformConfig, 
 
 /// 启动 - 直接调用 marketing::auto_run
 #[tauri::command]
-async fn start_marketing(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+async fn start_marketing() -> Result<serde_json::Value, String> {
     info!("启动 marketing auto");
 
-    // 检查是否已运行
-    if state.running.load(Ordering::SeqCst) {
-        return Err("任务已在运行中".to_string());
-    }
+    // 使用 compare_exchange 防止并发
+    match RUNNING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
+        Ok(_) => {
+            // 重置停止标志
+            marketing::set_stopped(false);
 
-    // 先停止已有的 Chrome
-    let controller = MarketingController::new();
-    controller.stop_all();
+            // 成功获取锁，启动任务
+            tokio::spawn(async {
+                let result = marketing::auto_run().await;
+                match result {
+                    Ok(_) => info!("marketing auto 完成"),
+                    Err(e) => info!("marketing auto 错误: {}", e),
+                }
+                RUNNING.store(false, Ordering::SeqCst);
+            });
 
-    state.running.store(true, Ordering::SeqCst);
-
-    // 直接调用 marketing::auto_run
-    tokio::spawn(async move {
-        let result = marketing::auto_run().await;
-        match result {
-            Ok(_) => info!("marketing auto 完成"),
-            Err(e) => info!("marketing auto 错误: {}", e),
+            Ok(serde_json::json!({
+                "res": 0,
+                "errmsg": "",
+                "datawf": { "started": true }
+            }))
         }
-    });
+        Err(_) => {
+            // 已经在运行
+            Err("任务已在运行中".to_string())
+        }
+    }
+}
 
-    Ok(serde_json::json!({
-        "res": 0,
-        "errmsg": "",
-        "datawf": { "started": true }
-    }))
+/// 执行任务（前端调用的命令）
+/// 第一次调用会真正执行，后续调用会被忽略
+#[tauri::command]
+async fn run_marketing_task(
+    _account: String,
+    _keywords: Vec<String>,
+    _comment: String,
+    _max_notes: u32,
+) -> Result<serde_json::Value, String> {
+    info!("run_marketing_task 被调用");
+
+    // 使用 compare_exchange 防止并发
+    match RUNNING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
+        Ok(_) => {
+            // 成功获取锁，启动任务
+            info!("开始执行 marketing::auto_run()");
+
+            tokio::spawn(async {
+                let result = marketing::auto_run().await;
+                match result {
+                    Ok(_) => info!("marketing auto 完成"),
+                    Err(e) => info!("marketing auto 错误: {}", e),
+                }
+                RUNNING.store(false, Ordering::SeqCst);
+            });
+
+            Ok(serde_json::json!({
+                "res": 0,
+                "errmsg": "",
+                "stats": { "success": 1, "failed": 0 }
+            }))
+        }
+        Err(_) => {
+            // 已经在运行，返回成功但不执行
+            info!("任务已在运行中，忽略");
+            Ok(serde_json::json!({
+                "res": 0,
+                "errmsg": "任务已在运行中",
+                "stats": { "success": 0, "failed": 0 }
+            }))
+        }
+    }
 }
 
 /// 停止
 #[tauri::command]
-async fn stop_marketing(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+async fn stop_marketing() -> Result<serde_json::Value, String> {
     info!("停止 marketing");
 
-    state.running.store(false, Ordering::SeqCst);
-
-    // 停止 Chrome
-    let controller = MarketingController::new();
-    controller.stop_all();
+    RUNNING.store(false, Ordering::SeqCst);
+    marketing::set_stopped(true);
 
     Ok(serde_json::json!({
         "res": 0,
         "errmsg": "",
         "datawf": { "stopped": true }
     }))
+}
+
+/// 检查是否正在运行
+pub fn is_running() -> bool {
+    RUNNING.load(Ordering::SeqCst)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -109,6 +157,7 @@ pub fn run() {
             save_platform_config_command,
             start_marketing,
             stop_marketing,
+            run_marketing_task,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

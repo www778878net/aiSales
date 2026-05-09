@@ -515,84 +515,27 @@
     };
     
     window.startAllTasks = async function() {
-      setStatus('运行中', 'running');
-      addLog('开始执行任务...', 'info');
-      
-      const keywords = document.getElementById('searchKeywords').value.split('\n').filter(function(k) { return k.trim(); });
-      const maxNotes = parseInt(document.getElementById('maxNotes').value);
-      
-      if (keywords.length === 0) {
-        addLog('请先配置关键词', 'error');
+      setStatus('启动中...', 'running');
+      addLog('正在启动 Chrome，首次启动约需 1-2 分钟，请耐心等待...', 'info');
+
+      try {
+        await invoke('start_marketing');
+        addLog('成功运行', 'success');
+        setStatus('运行中', 'running');
+      } catch (e) {
+        addLog('启动失败: ' + e, 'error');
         setStatus('错误', 'error');
-        return;
       }
-      
-      if (accounts.length === 0) {
-        addLog('请先添加账号', 'error');
-        setStatus('错误', 'error');
-        return;
-      }
-      
-      const enableXhs = document.getElementById('enableXhs').checked;
-      const enableZh = document.getElementById('enableZh').checked;
-      
-      // 收集所有要处理的 平台_账号
-      const tasks = [];
-      for (const accountId of accounts) {
-        if (enableXhs) {
-          tasks.push({ platform: 'xiaohongshu', account: accountId, accountDir: 'xiaohongshu_' + accountId });
-        }
-        if (enableZh) {
-          tasks.push({ platform: 'zhihu', account: accountId, accountDir: 'zhihu_' + accountId });
-        }
-      }
-      
-      addLog('共 ' + tasks.length + ' 个任务待执行', 'info');
-
-      // 串行执行任务（避免同时启动多个Chrome）
-      const results = [];
-      for (const task of tasks) {
-        addLog('启动 ' + task.accountDir + '...', 'info');
-
-        try {
-          const result = await invoke('run_marketing_task', {
-            keywords: keywords.map(function(k) { return k.trim(); }),
-            comment: '',
-            maxNotes: maxNotes,
-            account: task.accountDir
-          });
-
-          addLog(task.accountDir + ' 完成! 成功: ' + result.stats.success, 'success');
-          results.push({ accountDir: task.accountDir, success: true, stats: result.stats });
-        } catch (e) {
-          addLog(task.accountDir + ' 失败: ' + e, 'error');
-          results.push({ accountDir: task.accountDir, success: false, error: e });
-        }
-
-        // 任务间隔
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      
-      // 统计结果
-      let totalSuccess = 0;
-      let totalFailed = 0;
-      results.forEach(function(r) {
-        if (r.success) {
-          totalSuccess += r.stats.success || 0;
-          totalFailed += r.stats.failed || 0;
-        }
-      });
-      
-      document.getElementById('statSuccess').textContent = totalSuccess;
-      document.getElementById('statFailed').textContent = totalFailed;
-      
-      addLog('所有任务完成! 成功: ' + totalSuccess + ', 失败: ' + totalFailed, 'success');
-      setStatus('完成', 'ready');
     };
-    
-    window.stopAllTasks = function() {
-      setStatus('已停止', 'error');
-      addLog('任务已停止', 'warn');
+
+    window.stopAllTasks = async function() {
+      try {
+        await invoke('stop_marketing');
+        setStatus('已停止', 'ready');
+        addLog('任务已停止', 'warn');
+      } catch (e) {
+        addLog('停止失败: ' + e, 'error');
+      }
     };
     
     window.refreshStats = function() {
