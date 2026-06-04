@@ -16,6 +16,7 @@ name = "aiSales"
 path = "src-tauri/src/main.rs"
 
 [dependencies]
+marketing = { path = "../marketing" }
 zhihu = { path = "../zhihu" }
 xiaohongshu = { path = "../xiaohongshu" }
 marketingbase = { path = "../marketingbase" }
